@@ -137,13 +137,18 @@ static int const RCTVideoUnset = -1;
                                                object:nil];
     
     [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(applicationWillEnterForeground:)
-                                                 name:UIApplicationWillEnterForegroundNotification
+                                             selector:@selector(applicationDidBecomeActive:)
+                                                 name:UIApplicationDidBecomeActiveNotification
                                                object:nil];
     
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(audioRouteChanged:)
                                                  name:AVAudioSessionRouteChangeNotification
+                                               object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleAudioSessionInterruption:)
+                                                 name:AVAudioSessionInterruptionNotification
                                                object:nil];
   }
   
@@ -240,7 +245,7 @@ static int const RCTVideoUnset = -1;
   }
 }
 
-- (void)applicationWillEnterForeground:(NSNotification *)notification
+- (void)applicationDidBecomeActive:(NSNotification *)notification
 {
   [self applyModifiers];
   if (_playInBackground) {
@@ -258,6 +263,27 @@ static int const RCTVideoUnset = -1;
   if (reason.unsignedIntValue == AVAudioSessionRouteChangeReasonOldDeviceUnavailable) {
     self.onVideoAudioBecomingNoisy(@{@"target": self.reactTag});
   }
+}
+
+- (void) handleAudioSessionInterruption: (NSNotification *)notification
+{
+
+    NSNumber *interruptionType = [[notification userInfo] objectForKey:AVAudioSessionInterruptionTypeKey];
+    NSNumber *interruptionOption = [[notification userInfo] objectForKey:AVAudioSessionInterruptionOptionKey];
+
+    switch (interruptionType.unsignedIntegerValue) {
+        case AVAudioSessionInterruptionTypeBegan:{
+            if (_playInBackground || _playWhenInactive || _paused) return;
+            [_player pause];
+            [_player setRate:0.0];
+            
+        } break;
+        case AVAudioSessionInterruptionTypeEnded:{
+            [self applyModifiers];
+        } break;
+        default:
+            break;
+    }
 }
 
 #pragma mark - Progress

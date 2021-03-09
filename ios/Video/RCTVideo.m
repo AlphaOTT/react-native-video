@@ -1054,8 +1054,10 @@ static int const RCTVideoUnset = -1;
         mediaOption = [group.options objectAtIndex:index];
       }
     }
-  } else { // default. invalid type or "system"
+  } else if (type) { // default. invalid type or "system"
     [_player.currentItem selectMediaOptionAutomaticallyInMediaSelectionGroup:group];
+    return;
+  } else {
     return;
   }
   
